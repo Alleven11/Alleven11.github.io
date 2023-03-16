@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        #Seat_table{
+            width:913px;
+            height:500px;
+            border:5px solid rgb(119, 110, 241);
+            margin:0 auto;
+        }
+        .sjt_teacher{
+            width:100px;
+            height:90px;
+            border:2px solid rgb(29, 241, 75);
+            margin:0 auto;
+            text-align: center;
+            line-height: 88px;
+            margin-top:10px;
+            margin-bottom: 10px;
+            font-size:21px;
+        }
+        .stuName{
+            width:100px;
+            height:50px;
+            border:2px solid rgb(43, 188, 255);
+            float:left;
+            text-align: center;
+            line-height: 50px;
+            margin-left:9px;
+            margin-bottom: 10px;
+            font-size:18px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="Seat_table"></div>
+
+    
+</body>
+<script>
+    var classList=[
+        {name:"申冀特",gender:"男",type:"教师"},
+        {name:"陈锐锋",gender:"男",type:"学生"},
+        {name:"陈坤",gender:"男",type:"学生"},
+        {name:"刘浩彬",gender:"男",type:"学生"},
+        {name:"罗伟超",gender:"男",type:"学生"},
+        {name:"周雪媚",gender:"女",type:"学生"},
+        {name:"黄佳佳",gender:"女",type:"学生"},
+        {name:"庄子君",gender:"女",type:"学生"},
+        {name:"王泽曼",gender:"女",type:"学生"},
+        {name:"张洪铭",gender:"女",type:"学生"},
+        {name:"林雅婷",gender:"女",type:"学生"},
+        {name:"刘思航",gender:"男",type:"学生"},
+        {name:"黄文壕",gender:"男",type:"学生"},
+        {name:"邱培楠",gender:"男",type:"学生"},
+        {name:"崔俊凯",gender:"男",type:"学生"},
+        {name:"林裕烨",gender:"男",type:"学生"},
+        {name:"杨梓蕾",gender:"女",type:"学生"},
+        {name:"李婷婷",gender:"女",type:"学生"},
+        {name:"范杰豪",gender:"男",type:"学生"},
+        {name:"梁家宝",gender:"男",type:"学生"},
+        {name:"黄赫铭",gender:"男",type:"学生"},
+        {name:"黄增雄",gender:"男",type:"学生"},
+        {name:"吴羿瑾",gender:"女",type:"学生"},
+        {name:"杨彩玉",gender:"女",type:"学生"},
+        {name:"卢淑玲",gender:"女",type:"学生"},
+        {name:"胡美玲",gender:"女",type:"学生"},
+        {name:"郭浩杨",gender:"男",type:"学生"},
+        {name:"靳长辉",gender:"男",type:"学生"},
+        {name:"曾亮懿",gender:"男",type:"学生"},
+        {name:"陈冠宇",gender:"男",type:"学生"},
+        {name:"刘思博",gender:"男",type:"学生"},
+        {name:"黄慧贤",gender:"女",type:"学生"},
+        {name:"熊倩瑜",gender:"女",type:"学生"},
+        {name:"李寒星",gender:"女",type:"学生"},
+        {name:"李烨",gender:"男",type:"学生"},
+        {name:"温炫威",gender:"男",type:"学生"},
+        {name:"连志威",gender:"男",type:"学生"},
+        {name:"黄家铭",gender:"男",type:"学生"},
+        {name:"陈耿豪",gender:"男",type:"学生"},
+        {name:"朱声宁",gender:"男",type:"学生"},
+        {name:"童梓朋",gender:"男",type:"学生"},
+        {name:"廖文涛",gender:"男",type:"学生"},
+        {name:"敖琪涛",gender:"男",type:"学生"},
+    ];
+    var teacher=document.createElement('div');
+    var older=document.getElementById('Seat_table');
+    teacher.className="sjt_teacher";
+    teacher.innerHTML=classList[0].name;
+    older.appendChild(teacher);
+    for(var i=1;i<classList.length;i++){
+        var odiv=document.createElement('div');
+        odiv.className="stuName";
+        older.appendChild(odiv);
+        odiv.innerHTML=classList[i].name;
+    }
+    var lzw=document.getElementsByClassName("stuName")[35];
+    lzw.onclick=function(){
+        window.open('MYWEB.html')
+    }
+</script>
+</html>
