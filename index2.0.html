@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>同学画像集</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto { content-visibility: auto; }
+            .name-card { @apply bg-white rounded-lg shadow-md p-4 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer border border-gray-100; }
+            .btn-primary { @apply bg-primary text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-primary/90 transition-all duration-300 active:scale-95; }
+            .btn-game { @apply bg-accent text-white font-medium py-2 px-6 rounded-lg shadow-lg hover:bg-accent/90 transition-all duration-300 active:scale-95; }
+            .touch-friendly { min-height: 44px; min-width: 44px; }
+            .loading-container { @apply absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10; }
+            .loading-spin { @apply animate-spin text-primary text-3xl mb-2; }
+            /* 自定义下拉样式 */
+            .dropdown-item { @apply px-4 py-2 cursor-pointer hover:bg-primary/10 hover:text-primary transition-all duration-200; }
+            .dropdown-active { @apply bg-primary/10 text-primary; }
+        }
+    </style>
+
+    <style>
+        /* 基础样式 */
+        @media (max-width: 640px) {
+            html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+        }
+
+        /* 图片容器 & 加载样式 */
+        .image-wrapper {
+            position: relative;
+            width: 100%;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .portrait-image {
+            max-width: 100%;
+            max-height: 70vh;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+            z-index: 1;
+        }
+        .game-image {
+            max-height: 60vh;
+            object-fit: contain;
+        }
+        .loading-hide { display: none !important; }
+
+        /* 错误脉冲特效 */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .pulse-error {
+            animation: pulse-red 0.8s ease-in-out 2;
+            border-color: #EF4444 !important;
+            background-color: rgba(239, 68, 68, 0.1) !important;
+        }
+
+        /* 自定义下拉容器 */
+        .custom-dropdown {
+            position: relative;
+            flex: 1;
+        }
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 220px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-top: 4px;
+            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .dropdown-list.show {
+            display: block;
+        }
+        /* 滚动条美化 */
+        .dropdown-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .dropdown-list::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-light to-blue-50 min-h-screen font-sans text-dark flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <h1 class="text-xl md:text-2xl font-bold text-primary flex items-center">
+                <i class="fa fa-users mr-2 text-accent"></i>同学画像集
+            </h1>
+            <div class="flex items-center gap-3">
+                <button id="game-btn" class="btn-game">
+                    <i class="fa fa-gamepad mr-1"></i>猜画像
+                </button>
+                <span class="text-sm text-gray-500">共 <span class="font-semibold text-primary">43</span> 位同学</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8 flex-1">
+        <!-- 介绍区域 -->
+        <section class="mb-8 text-center">
+            <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold mb-3 text-dark">我们的班级</h2>
+                <p class="text-gray-600">点击名字查看画像 | 点击猜画像开始游戏</p>
+            </div>
+        </section>
+
+        <!-- 名字网格 -->
+        <section id="names-grid"
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-12"></section>
+    </main>
+
+    <!-- 底部版权文字 -->
+    <footer class="py-4 bg-white text-center text-gray-500 text-sm border-t border-gray-200">
+        <p>现代艺术家：连志威  技术顾问：zhuzhunb</p>
+        <p class="mt-1">本页面由21互联网所有</p>
+    </footer>
+
+    <!-- 1. 查看图片模态框（原有功能+加载状态） -->
+    <div id="image-modal"
+        class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="relative w-full max-w-4xl">
+            <button id="close-modal" class="absolute -top-12 right-0 text-white text-2xl touch-friendly"><i
+                    class="fa fa-times"></i></button>
+            <button id="prev-btn"
+                class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2  text-2xl text-black rounded-full p-3 touch-friendly"><i
+                    class="fa fa-chevron-left"></i></button>
+            <button id="next-btn"
+                class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2  text-2xl text-black rounded-full p-3 touch-friendly"><i
+                    class="fa fa-chevron-right"></i></button>
+            <div class="bg-white rounded-xl p-6">
+                <h3 id="modal-title" class="text-xl font-bold text-center mb-4"></h3>
+                <!-- 图片容器 + 加载层 -->
+                <div class="image-wrapper">
+                    <div id="modal-loading" class="loading-container">
+                        <i class="fa fa-refresh loading-spin"></i>
+                        <p class="text-gray-600">图片加载中...</p>
+                    </div>
+                    <img id="modal-image" src="" alt="" class="portrait-image">
+                </div>
+                <div class="text-center mt-4 text-gray-500"><span id="image-counter"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 猜画像游戏模态框（自定义下拉搜索框） -->
+    <div id="game-modal"
+        class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <!-- 新增：分数显示 -->
+                <h2 class="text-xl font-bold text-primary">🎮 猜同学画像 <span id="score-display" class="text-accent text-base ml-2"></span></h2>
+                <button id="close-game" class="text-dark text-xl touch-friendly"><i class="fa fa-times"></i></button>
+            </div>
+            <!-- 随机画像 + 加载层 -->
+            <div class="mb-6 flex justify-center image-wrapper">
+                <div id="game-loading" class="loading-container">
+                    <i class="fa fa-refresh loading-spin"></i>
+                    <p class="text-gray-600">图片加载中...</p>
+                </div>
+                <img id="game-image" src="" alt="猜一猜这是谁" class="portrait-image game-image rounded-xl shadow-md">
+            </div>
+            <!-- 答案输入区域 + 自定义下拉菜单 -->
+            <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                <div class="custom-dropdown">
+                    <input id="answer-input" type="text" placeholder="输入同学名字"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none text-lg touch-friendly">
+                    <!-- 自定义下拉列表 -->
+                    <div id="dropdown-list" class="dropdown-list"></div>
+                </div>
+                <button id="submit-answer" class="btn-primary">提交答案</button>
+                <button id="next-random" class="btn-primary bg-secondary">下一张</button>
+            </div>
+            <p id="game-tip" class="text-center text-gray-500 text-sm">输入名字后提交，支持下拉选择</p>
+        </div>
+    </div>
+
+    <!-- 🔥 新增：答对10题奖励弹窗（原有功能无任何修改） -->
+    <div id="reward-modal" class="fixed inset-0 z-60 hidden bg-gradient-to-br from-primary/90 to-accent/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-3xl font-bold text-primary mb-4">恭喜你答对了10题</h2>
+            <p class="text-gray-600 mb-6 text-lg">有一个神秘惊喜给你</p>
+            <button id="continue-btn" class="btn-primary text-lg px-8 py-3">继续游戏</button>
+        </div>
+    </div>
+
+    <!-- 烟花特效库 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <script>
+        // ==================== 配置区域 ====================
+        const classmates = [
+            { id: 1, name: "庄子君", image: "images/image-1.png" },
+            { id: 2, name: "周雪媚", image: "images/image-2.png" },
+            { id: 3, name: "熊倩瑜", image: "images/image-3.png" },
+            { id: 4, name: "杨彩玉", image: "images/image-4.png" },
+            { id: 5, name: "梁家宝", image: "images/image-5.png" },
+            { id: 6, name: "廖文涛", image: "images/image-6.png" },
+            { id: 7, name: "黄增熊", image: "images/image-7.png" },
+            { id: 8, name: "靳长辉", image: "images/image-8.png" },
+            { id: 9, name: "林雅婷", image: "images/image-9.png" },
+            { id: 10, name: "林裕烨", image: "images/image-10.png" },
+            { id: 11, name: "王泽漫", image: "images/image-11.png" },
+            { id: 12, name: "张洪铭", image: "images/image-12.png" },
+            { id: 13, name: "黄慧贤", image: "images/image-13.png" },
+            { id: 14, name: "黄鹤铭", image: "images/image-14.png" },
+            { id: 15, name: "童梓朋", image: "images/image-15.png" },
+            { id: 16, name: "朱声宁", image: "images/image-16.png" },
+            { id: 17, name: "卢淑玲", image: "images/image-17.png" },
+            { id: 18, name: "陈耿豪", image: "images/image-18.png" },
+            { id: 19, name: "陈冠宇", image: "images/image-19.png" },
+            { id: 20, name: "陈坤", image: "images/image-20.png" },
+            { id: 21, name: "陈锐锋", image: "images/image-21.png" },
+            { id: 22, name: "刘冰冰", image: "images/image-22.png" },
+            { id: 23, name: "刘浩彬", image: "images/image-23.png" },
+            { id: 24, name: "曾亮懿", image: "images/image-24.png" },
+            { id: 25, name: "温炫威", image: "images/image-25.png" },
+            { id: 26, name: "吴奕瑾", image: "images/image-26.png" },
+            { id: 27, name: "罗伟超", image: "images/image-27.png" },
+            { id: 28, name: "邱培楠", image: "images/image-28.png" },
+            { id: 29, name: "刘思博", image: "images/image-29.png" },
+            { id: 30, name: "刘思航", image: "images/image-30.png" },
+            { id: 31, name: "敖琪涛", image: "images/image-31.png" },
+            { id: 32, name: "胡美玲", image: "images/image-32.png" },
+            { id: 33, name: "黄家铭", image: "images/image-33.png" },
+            { id: 34, name: "李婷婷", image: "images/image-34.png" },
+            { id: 35, name: "李烨", image: "images/image-35.png" },
+            { id: 36, name: "范杰豪", image: "images/image-36.png" },
+            { id: 37, name: "郭浩杨", image: "images/image-37.png" },
+            { id: 38, name: "杨梓蕾", image: "images/image-38.png" },
+            { id: 39, name: "黄佳佳", image: "images/image-39.png" },
+            { id: 40, name: "李寒星", image: "images/image-40.png" },
+            { id: 41, name: "崔俊凯", image: "images/image-41.png" },
+            { id: 42, name: "黄文壕", image: "images/image-42.png" },
+            { id: 43, name: "连志威", image: "images/image-43.png" }
+        ];
+        // ==================== 全局变量 ====================
+        let currentIndex = 0;
+        let currentRandomStudent = null;
+        let score = 0; // 🔥 新增：答对题数统计
+
+        // DOM元素
+        const namesGrid = document.getElementById('names-grid');
+        const imageModal = document.getElementById('image-modal');
+        const gameModal = document.getElementById('game-modal');
+        const answerInput = document.getElementById('answer-input');
+        const dropdownList = document.getElementById('dropdown-list');
+        const rewardModal = document.getElementById('reward-modal'); // 🔥 新增：奖励弹窗
+        
+        // 加载元素
+        const modalLoading = document.getElementById('modal-loading');
+        const gameLoading = document.getElementById('game-loading');
+        const modalImage = document.getElementById('modal-image');
+        const gameImage = document.getElementById('game-image');
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNameCards();
+            initGameMode();
+            initCustomDropdown();
+            bindModalEvents();
+            bindImageLoadEvents();
+            bindRewardEvent(); // 🔥 新增：绑定奖励弹窗事件
+        });
+
+        // 1. 渲染名字卡片
+        function renderNameCards() {
+            namesGrid.innerHTML = '';
+            classmates.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'name-card';
+                card.innerHTML = `<h3 class="font-semibold text-lg">${item.name}</h3>`;
+                card.onclick = () => openModal(index);
+                namesGrid.appendChild(card);
+            });
+        }
+
+        // 绑定图片加载事件
+        function bindImageLoadEvents() {
+            modalImage.onload = () => modalLoading.classList.add('loading-hide');
+            modalImage.onerror = () => {
+                modalLoading.querySelector('p').textContent = '图片加载失败';
+                modalLoading.querySelector('i').className = 'fa fa-exclamation-circle text-danger text-3xl mb-2';
+            };
+            gameImage.onload = () => gameLoading.classList.add('loading-hide');
+            gameImage.onerror = () => {
+                gameLoading.querySelector('p').textContent = '图片加载失败';
+                gameLoading.querySelector('i').className = 'fa fa-exclamation-circle text-danger text-3xl mb-2';
+            };
+        }
+
+        // 2. 图片查看模态框
+        function openModal(index) {
+            currentIndex = index;
+            const s = classmates[currentIndex];
+            modalLoading.classList.remove('loading-hide');
+            modalLoading.querySelector('i').className = 'fa fa-refresh loading-spin';
+            modalLoading.querySelector('p').textContent = '图片加载中...';
+            
+            document.getElementById('modal-title').textContent = s.name;
+            modalImage.src = s.image;
+            modalImage.alt = s.name;
+            document.getElementById('image-counter').textContent = `${currentIndex + 1}/${classmates.length}`;
+            imageModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal() { imageModal.classList.add('hidden'); document.body.style.overflow = ''; }
+        function prevImage() { currentIndex = (currentIndex - 1 + classmates.length) % classmates.length; openModal(currentIndex); }
+        function nextImage() { currentIndex = (currentIndex + 1) % classmates.length; openModal(currentIndex); }
+
+        // 🔥 自定义下拉搜索框核心逻辑
+        function initCustomDropdown() {
+            // 渲染下拉列表
+            function renderDropdown(filter = '') {
+                dropdownList.innerHTML = '';
+                const filtered = classmates.filter(item => 
+                    item.name.includes(filter.trim())
+                );
+                if(filtered.length === 0) {
+                    dropdownList.innerHTML = '<div class="px-4 py-2 text-gray-400">无匹配结果</div>';
+                    return;
+                }
+                filtered.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'dropdown-item';
+                    div.textContent = item.name;
+                    div.onclick = () => {
+                        answerInput.value = item.name;
+                        dropdownList.classList.remove('show');
+                    };
+                    dropdownList.appendChild(div);
+                });
+            }
+
+            // 输入搜索
+            answerInput.addEventListener('input', () => {
+                renderDropdown(answerInput.value);
+                dropdownList.classList.add('show');
+            });
+
+            // 聚焦显示/失影隐藏
+            answerInput.addEventListener('focus', () => {
+                renderDropdown(answerInput.value);
+                dropdownList.classList.add('show');
+            });
+
+            // 点击外部关闭下拉
+            document.addEventListener('click', (e) => {
+                if(!answerInput.contains(e.target) && !dropdownList.contains(e.target)) {
+                    dropdownList.classList.remove('show');
+                }
+            });
+
+            // 回车提交关闭下拉
+            answerInput.addEventListener('keypress', e => {
+                if(e.key === 'Enter') {
+                    dropdownList.classList.remove('show');
+                    checkAnswer();
+                }
+            });
+        }
+
+        // 3. 猜画像游戏模式
+        function initGameMode() {
+            window.getRandomStudent = function () {
+                gameLoading.classList.remove('loading-hide');
+                gameLoading.querySelector('i').className = 'fa fa-refresh loading-spin';
+                gameLoading.querySelector('p').textContent = '图片加载中...';
+                
+                currentRandomStudent = classmates[Math.floor(Math.random() * classmates.length)];
+                gameImage.src = currentRandomStudent.image;
+                gameImage.alt = currentRandomStudent.name;
+                answerInput.value = '';
+                dropdownList.classList.remove('show');
+                document.getElementById('game-tip').textContent = '输入名字后提交';
+            }
+            // 打开游戏
+            document.getElementById('game-btn').onclick = () => {
+                gameModal.classList.remove('hidden');
+                getRandomStudent();
+                document.body.style.overflow = 'hidden';
+                // 初始化分数显示
+                document.getElementById('score-display').textContent = `已答对：${score}题`;
+            };
+            // 关闭游戏
+            document.getElementById('close-game').onclick = () => {
+                gameModal.classList.add('hidden');
+                document.body.style.overflow = '';
+            };
+            // 下一张
+            document.getElementById('next-random').onclick = getRandomStudent;
+            // 提交答案
+            document.getElementById('submit-answer').onclick = checkAnswer;
+        }
+
+        // 答案校验 + 特效
+        function checkAnswer() {
+            const input = answerInput.value.trim();
+            const tip = document.getElementById('game-tip');
+            dropdownList.classList.remove('show');
+
+            if (!input) { 
+                tip.textContent = '请输入同学名字！'; 
+                tip.className = 'text-center text-danger text-sm'; 
+                return; 
+            }
+
+            if (input === currentRandomStudent.name) {
+                score++; // 🔥 新增：答对+1
+                // 更新分数显示
+                document.getElementById('score-display').textContent = `已答对：${score}题`;
+                tip.textContent = '✅ 回答正确！太棒了！';
+                tip.className = 'text-center text-green-600 font-bold text-sm';
+                playSuccess();
+
+                // 🔥 新增：答对10题弹出奖励
+                if(score === 10){
+                    setTimeout(() => {
+                        gameModal.classList.add('hidden');
+                        rewardModal.classList.remove('hidden');
+                        // 奖励烟花特效
+                        confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, zIndex: 9999 });
+                    }, 1000);
+                }
+            } else {
+                tip.textContent = `❌ 错误！正确答案：${currentRandomStudent.name}`;
+                tip.className = 'text-center text-danger font-bold text-sm';
+                showErrorEffect(tip);
+            }
+        }
+
+        // 成功烟花特效
+        function playSuccess() {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            setTimeout(() => {
+                confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
+                confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
+            }, 100);
+        }
+
+        // 错误特效
+        function showErrorEffect(element) {
+            element.classList.add('pulse-error');
+            setTimeout(() => element.classList.remove('pulse-error'), 1600);
+        }
+
+        // 🔥 新增：绑定奖励弹窗关闭事件
+        function bindRewardEvent(){
+            document.getElementById('continue-btn').onclick = () => {
+                rewardModal.classList.add('hidden');
+                gameModal.classList.remove('hidden');
+                getRandomStudent(); // 自动加载下一题
+            }
+        }
+
+        // 绑定事件
+        function bindModalEvents() {
+            document.getElementById('close-modal').onclick = closeModal;
+            document.getElementById('prev-btn').onclick = prevImage;
+            document.getElementById('next-btn').onclick = nextImage;
+            imageModal.onclick = e => e.target === imageModal && closeModal();
+            gameModal.onclick = e => e.target === gameModal && (gameModal.classList.add('hidden'), document.body.style.overflow = '');
+        }
+    </script>
+</body>
+
+</html>
